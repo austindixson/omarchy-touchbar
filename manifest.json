@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.austindixson.touchbar",
   "name": "Touch Bar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Austin Dixson",
   "license": "MIT",
   "description": "Customize the Apple Silicon Touch Bar with Omarchy actions via tiny-dfr. Default strip: menu, terminal, lock, screenshot, brightness, and media keys.",
