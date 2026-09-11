@@ -104,27 +104,40 @@ if [[ -f $ETC_CONF ]] &&
   exit 0
 fi
 
+# Privilege-boundary helpers must come from known system paths, never PATH.
+# A user-writable PATH entry would otherwise run as root after pkexec/sudo.
+system_bin() {
+  local name=$1
+  local candidate
+  for candidate in "/usr/bin/$name" "/bin/$name" "/usr/sbin/$name" "/sbin/$name"; do
+    if [[ -x "$candidate" && -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  echo "io.github.austindixson.touchbar: missing system $name" >&2
+  exit 1
+}
+
 # Quickshell has no terminal. sudo from a detached process fails silently once
 # the ticket is cold; pkexec puts up a polkit prompt. sudo stays for a real TTY.
 run_as_root() {
+  local elev_bin
   if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
     "$@"
   elif [[ -t 0 && -t 1 ]]; then
-    sudo "$@"
+    elev_bin=$(system_bin sudo)
+    "$elev_bin" "$@"
   else
-    command -v pkexec >/dev/null || {
-      echo "io.github.austindixson.touchbar: pkexec is required to install the Touch Bar layout" >&2
-      exit 1
-    }
-    pkexec "$@"
+    elev_bin=$(system_bin pkexec)
+    "$elev_bin" "$@"
   fi
 }
 
-install_bin=$(command -v install)
-systemctl_bin=$(command -v systemctl || true)
+install_bin=$(system_bin install)
+systemctl_bin=$(system_bin systemctl)
+bash_bin=$(system_bin bash)
 install_cmd="$(printf '%q' "$install_bin") -D -m 644 $(printf '%q' "$toml_out") $(printf '%q' "$ETC_CONF")"
-if [[ -n $systemctl_bin ]]; then
-  install_cmd+=" && $(printf '%q' "$systemctl_bin") restart tiny-dfr.service"
-fi
+install_cmd+=" && $(printf '%q' "$systemctl_bin") restart tiny-dfr.service"
 
-run_as_root /bin/bash -c "$install_cmd"
+run_as_root "$bash_bin" -c "$install_cmd"
