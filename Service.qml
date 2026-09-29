@@ -11,10 +11,11 @@ Item {
   readonly property string pluginDir: decodeURIComponent(
     Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "")).replace(/\/$/, "")
   readonly property string applyScript: pluginDir + "/apply.sh"
-  readonly property url overlayUrl: {
-    var home = Quickshell.env("HOME") || ""
-    return "file://" + home + "/.config/omarchy/touchbar.json"
-  }
+
+  // No FileView on ~/.config/omarchy/touchbar.json (marketplace #6878).
+  // FileView follows symlinks and has no size cap, so a FIFO or huge file at
+  // that predictable path could stall or exhaust the shell. The layout is
+  // applied only when apply.sh runs; apply.sh validates the file first.
 
   function applyLayout() {
     if (applyProc.running) return
@@ -38,20 +39,6 @@ Item {
     stderr: StdioCollector { id: applyErr; waitForEnd: true }
     onExited: function(exitCode) {
       if (exitCode !== 0) root.reportApplyFailure(exitCode)
-    }
-  }
-
-  FileView {
-    id: overlay
-    path: root.overlayUrl
-    watchChanges: true
-    onFileChanged: {
-      overlay.reload()
-      root.applyLayout()
-    }
-    onLoaded: {
-      if (overlay.text && overlay.text.length > 0)
-        root.applyLayout()
     }
   }
 }
