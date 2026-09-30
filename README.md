@@ -53,9 +53,14 @@ The plugin only replaces `/etc/tiny-dfr/config.toml` when that file is missing o
 ## Security
 
 - `apply.sh` checks the layout file before it reads it. The file must be a regular file of at most 64 KiB (65536 bytes). Symlinks, FIFOs, directories, and devices are refused, and the script exits non-zero with a message on stderr. The checks run again on the opened file descriptor (`O_NOFOLLOW`, non-blocking), so swapping the file after the check does not get past them.
+- `apply.sh` reads `~/.config/hypr/bindings.lua` the same way (no-follow, non-blocking, regular file only, at most 256 KiB) and updates it by writing an exclusive temporary file in the same directory and atomically renaming it over the original, keeping the existing file mode. A symlink, FIFO, directory, device, or oversized file at that path is refused (non-zero exit, nothing written). A missing file is skipped.
 - The Quickshell service does not watch or read `~/.config/omarchy/touchbar.json`. The layout only changes when you run `apply.sh`.
 
 ## Changelog
+
+### 1.1.3
+
+- `apply.sh` no longer uses `os.path.isfile()`, an unbounded `open().read()`, or a truncating `open(..., "w")` on `~/.config/hypr/bindings.lua`. The read is bounded (256 KiB), `O_NOFOLLOW | O_NONBLOCK`, and regular-file only; the update goes through an exclusive temp file plus `os.replace`, preserving the file mode. Symlinks and FIFOs are refused instead of followed or stalled on ([marketplace #9252](https://github.com/omacom/omarchy-plugin-marketplace/issues/9252))
 
 ### 1.1.2
 
